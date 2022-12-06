@@ -1,77 +1,41 @@
 # Wizard API
 
-API genérica para a configuração inicial (contratação) de qualquer coisa.
+Uma minúscula API REST para o acompanhamento das etapas no ciclo de vida de qualquer coisa
+com múltiplos estágios.
 
-Também conhecido como "o backend(BFF) de referência do projeto [Wizard UI](https://github.com/jaxyendy/wizard-ui)".
+Esta micro-API foi idealizada para servir a função de acompanhar o ciclo de vida de *contratos* que
+passam por múltiplos passos, contratos que possuem uma sequência de estados possíveis, como
+num "[wizard](https://pt.wikipedia.org/wiki/Assistente_(software))" de instalação de software.
 
-# Tecnologias
-- [Rust](https://www.rust-lang.org/) 1.64.0
-- [Rocket.rs](https://rocket.rs/) 0.5.0-rc2 
+## Visão Geral
 
-# Servidor de desenvolvimento
+A contratação de um serviço, ou a compra de um produto online pode ser um processo curto ou extenso
+dependendo da coisa a ser contratada ou comprada.
 
+Por exemplo, um curso online de 4 semanas pode ter 4 formulários com testes para cada aluno
+completar antes de receber uma certifição. O acompanhamento de em qual "semana" de um curso cada
+aluno da sala está, ou se ele cancelou a matrícula poderia usar esta micro-API para auxiliar
+na gerencia deste processo que possui múltiplos estágios.
+
+A representação deste contrato, em JSON pode ser imaginada como algo parecido com:
+
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "created_by": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "created_at": "2022-12-06T19:13:47.894Z",
+  "updated_at": "2022-12-06T19:13:47.894Z",
+  "status": "active/week-3",
+  "setup_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+}
 ```
-# launch dev server on localhost:8000
-cargo run
-```
 
-# Contribuições
+Esta API não possui a finalidade de ser abrangente, mas sim ser focada, genérica flexível e simples.
+Para ser usada como um microsserviço em conjunto com outras APIs pequenas.
 
-Este repositório pode estar espelhado em outros lugares, para contribuir com melhorias ou relatar
-problemas, utilize a página deste projeto no Github: https://github.com/jaxyendy/wizard-api
-
-Se você está lendo este README fora do Github, não deixe de ler também o
-arquivo [DISTRO.md](DISTRO.md).
+A Wizard API registra a mudança de estados de um contrato e as referências aos componentes deste
+contrato, a criação destes componentes está fora do escopo deste projeto.
 
 # Licença
 
-A definir.
-<small>(gostamos muito da AGPL3, mas MIT pode ser mais flexível)</small>
-
-
-## Fluxos
-
-Esta API é "stateless" e por sua vez conversa com um outro serviço (Persistent state) para
-armazenar o log das requisições e respostas ao serviço (Creation service) que de fato cria a "coisa" 
-contratada.
-
-#### Contratação
-
-```mermaid
-sequenceDiagram
-    Wizard UI->>Wizard API: Dados de formulário
-    alt dados inválidos
-        Wizard API-->>Wizard UI: Erro
-    end
-    par
-        Wizard API->>Persistent state: Registra a requisição
-    and
-        Wizard API->>Creation service: Requisição
-    end
-    Creation service->>Wizard API: Resposta
-    par
-        Wizard API->>Wizard UI: Resposta
-        Wizard API->>Persistent state: Registra a resposta
-    end
-```
-
-#### Consulta
-
-```mermaid
-sequenceDiagram
-    Wizard UI->>Wizard API: Consulta Status
-    par
-        Wizard API->>Persistent state: Consulta status conhecido
-        Persistent state->>Wizard API: Status conhecido
-        Wizard API->>Wizard UI: Status conhecido
-    and
-        Wizard API->>Creation service: Consulta último status
-        Creation service->>Wizard API: Último Status
-    end
-    par
-        Wizard API->>Wizard UI: Último status
-    and
-        Wizard API->>Persistent state: Atualiza status conhecido
-    end
-```
-
+MIT
