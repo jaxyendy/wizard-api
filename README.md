@@ -36,6 +36,10 @@ Para ser usada como um microsserviço em conjunto com outras APIs pequenas.
 A Wizard API registra a mudança de estados de um contrato e as referências aos componentes deste
 contrato, a criação destes componentes está fora do escopo deste projeto.
 
-# Licença
+## Licença
 
 MIT
+
+## Referência
+
+Consulte a especificação [OpenAPI do projeto](./spec/openapi.yaml) ([ReDoc](https://redocly.github.io/redoc/?url=https://raw.githubusercontent.com/jaxyendy/wizard-api/main/spec/openapi.yaml), [Swagger](https://petstore.swagger.io/?url=https%3A%2F%2Fraw.githubusercontent.com%2Fjaxyendy%2Fwizard-api%2Fmain%2Fspec%2Fopenapi.yaml#/))

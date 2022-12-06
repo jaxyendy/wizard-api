@@ -1,0 +1,293 @@
+openapi: 3.0.0
+info:
+  title: Wizard API
+  description: |
+    Uma minúscula API REST para o acompanhamento das etapas no ciclo de vida de qualquer coisa
+    com múltiplos estágios.
+    
+    As duas entidades principais desta API são contratos (Contracts)
+    e configurações (Setups).
+    
+    **Contract**: representa o ciclo de vida de uma contratação
+    de um produto ou serviço, que vai desde antes de ativado,
+    passando pelo preenchimento completo dos dados em passos de um wizard,
+    até o ok final e suas fases posteriores, como o cancelamento ou
+    inativação de um contrato.
+    
+    **Setup**: é uma lista de referências à outras entidades
+    criadas ao longo do wizard que possuem dados que serão úteis na configuração
+    e customização do produto ou serviço em questão.
+  version: 0.1.0
+tags:
+  - name: welcome
+    description: |
+      O início.
+      
+      Neste estágio, as únicas opções são consultar se o usuário logado já
+      possui um contrato ou criar seu primeiro contrato.
+  - name: progress
+    description: |
+      Antes do início da vigência de um contrato, informações necessárias para a configuração
+      do produto são coletadas por meio de um "wizard" de contratação com múltiplos passos.
+
+      As funções deste grupo são as relativas à atualização do progresso do usuário
+      nas etapas deste fluxo.
+  - name: finished
+    description: |
+      Funções utilizadas pelo produto contratado, consulta de dados
+      necessários para a customização / configuração do serviço contratado.
+paths:
+  /contracts/current:
+    get:
+      summary: |
+        Recupera o contrato mais atual do usuário autenticado. 
+        Seja este contrato um ainda em preenchimento ou um já em vigência.
+      tags:
+        - welcome
+      responses:
+        "404":
+          $ref: "#/components/responses/contractNotFound"
+        "200": 
+          $ref: "#/components/responses/contractFound"
+  /contracts/{contractId}:
+    put:
+      summary: |
+        Inicia uma nova contratação de produto/serviço.
+      description: |
+        Cria um contrato novo e retorna os dados dele, 
+        um setup ID criado pelo servidor e o status correspondente a 
+        um formulário que não teve a primeira tela preenchida ainda.
+        
+      tags:
+        - welcome
+      parameters:
+        - $ref: "#/components/parameters/contract"
+      requestBody:
+        $ref: "#/components/requestBodies/emptyBody"
+      responses:
+        "200": 
+          $ref: "#/components/responses/contractFound"
+        "400":
+          description: |
+            Requisição ruim
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    enum:
+                      - missing_id
+                      - malformed_id
+                      - multiple_fields_not_allowed
+    patch:
+      summary: |
+        Atualiza a informação sobre em que
+        passo do contrato o comprador se encontra.
+      tags:
+        - progress
+      parameters:
+        - $ref: "#/components/parameters/contract"
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+              properties:
+                status:
+                  $ref: "#/components/schemas/ContractStatus"
+            
+      responses:
+        "400":
+          description: |
+            Requisição ruim
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    enum:
+                      - missing_status_field
+                      - invalid_status_field
+                      - multiple_fields_not_allowed
+        "204":
+          $ref: "#/components/responses/patchSuccess"
+  /setups/{setupId}:
+    patch:
+      tags:
+        - progress
+      summary: |
+        Atualiza as informações para a configuração / inicialização de um produto.
+        Adicionando a referência para os recursos criados durante o wizard.
+      parameters:
+        - $ref: "#/components/parameters/setup"
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: "#/components/schemas/BaseSetup"
+      responses:
+        "204":
+          $ref: "#/components/responses/patchSuccess"
+        "400":
+          description: |
+            Erro
+    get:
+      tags:
+        - finished
+      summary: |
+        Recupera uma configuração de produto específica
+      parameters:
+        - $ref: "#/components/parameters/setup"
+      responses:
+        "200":
+          $ref: "#/components/responses/setupFound"
+        "400":
+          description: |
+            Erro
+components:
+  parameters:
+    contract:
+      name: contractId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    setup:
+      name: setupId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  requestBodies:
+    emptyBody:
+      description: |
+        Requisição com body vazio.
+
+        O ID do recurso deve ir no path e ser gerado
+        por quem faz o request. Esta operação é idempotente.
+      content: 
+        application/json:
+          schema:
+            type: object
+            nullable: true
+  responses:
+    patchSuccess:
+      description: |
+        Sucesso. (no content)
+    contractNotFound:
+      description: |
+        Nenhum contrato deste usuário foi encontrado
+        para os critérios da busca efetuada.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+                enum:
+                  - current_contract_not_found
+                  - contract_id_not_found
+            required:
+              - code
+    contractFound:
+      description: |
+        Detalhes do recurso
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Contract"
+    setupFound:
+      description: |
+        Detalhes da configuração
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Setup"
+  schemas:
+    BaseResource:
+      type: object
+      properties:
+        id:
+          description: |
+            ID do recurso
+          type: string
+          format: uuid
+        created_by:
+          description: |
+            ID do usuário que registrou os dados deste recurso
+          type: string
+          format: uuid
+        created_at:
+          description: |
+            Data do primeiro registro deste recurso por este usuário
+          type: string
+          format: date-time
+        updated_at:
+          description: |
+            Data da última atualização do registro deste recurso por este usuário
+          type: string
+          format: date-time
+    ContractStatus:
+      description: |
+        O código do estado em que o contrato se encontra.
+      type: string
+    BaseContract:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/ContractStatus"
+        setup_id:
+          description: |
+            ID da configuração a ser usada pelo produto / serviço contratado
+          type: string
+          format: uuid
+    Contract:
+      description: |
+        O registro da compra/contratação de um serviço.
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/BaseResource"
+        - $ref: "#/components/schemas/BaseContract"
+    BaseSetup:
+      description: |
+        Lista dos recursos informados durante o wizard
+      type: object
+      properties:
+        contract_id:
+          description: |
+            O ID do contrato que gerou esta configuração.
+          type: string
+          format: uuid
+        components:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              id:
+                type: string
+                format: uuid
+          example:
+            - name: "component-1"
+              id: "be40e146-e9ac-42f6-989a-e3dcfa464a56"
+            - name: "component-2"
+              id: "826d2881-6845-4ac7-bf4c-41b0c4737a1b"
+            - name: "component-3"
+              id: "ede38af9-cc8c-4aac-9e58-04984502261e"
+    Setup:
+      description: |
+        Configuração inicial de um produto. 
+        Resultado de informaçẽos obtidas durante as etapas do wizard.
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/BaseResource"
+        - $ref: "#/components/schemas/BaseSetup"
+
